@@ -1,0 +1,147 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Random;
+
+public class SadFlappyBird extends JPanel implements ActionListener, KeyListener {
+    private int width = 1000, height = 800;
+    private int birdY = height / 2, birdVelocity = 0, gravity = 1;
+    private ArrayList<Rectangle> pipes = new ArrayList<>();
+    private Timer timer = new Timer(17, this);
+    private boolean gameOver = false;
+    private int score = 0;
+    private Image birdImg;
+
+    public SadFlappyBird() {
+        JFrame frame = new JFrame("Sad Bird");
+        frame.add(this);
+        frame.setSize(width, height);
+        frame.setResizable(false);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.addKeyListener(this);
+
+        // Try to load a bird image. Replace "bird.png" with your filename.
+        birdImg = new ImageIcon("4.png").getImage();
+        // 2. Scale it smoothly to 50x40 pixels
+        birdImg = birdImg.getScaledInstance(50, 40, Image.SCALE_SMOOTH);
+
+        restartGame();
+        frame.setVisible(true);
+    }
+
+    private void restartGame() {
+        birdY = height / 2;
+        birdVelocity = 0;
+        pipes.clear();
+        gameOver = false;
+        score = 0;
+
+        // Initial pipes with consistent spacing
+        for (int i = 0; i < 3; i++) {
+            addPipe(width + (i * 350));
+        }
+        timer.start();
+    }
+
+    private void addPipe(int startX) {
+        Random rand = new Random();
+        int gap = 180; // The space the bird flies through
+        int minPipeHeight = 50;
+        int maxPipeHeight = height - gap - minPipeHeight;
+
+        int topPipeHeight = rand.nextInt(maxPipeHeight - minPipeHeight) + minPipeHeight;
+
+        // Top Pipe
+        pipes.add(new Rectangle(startX, 0, 80, topPipeHeight));
+        // Bottom Pipe
+        pipes.add(new Rectangle(startX, topPipeHeight + gap, 80, height - topPipeHeight - gap));
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        // Background
+        g.setColor(new Color(135, 206, 235)); // Sky Blue
+        g.fillRect(0, 0, width, height);
+
+        // Draw Bird
+        if (birdImg != null && birdImg.getWidth(null) > 0) {
+            g.drawImage(birdImg, 100, birdY, 40, 30, null);
+        } else {
+            g.setColor(new Color(255, 187, 118)); // Backup if image fails
+            g.fillOval(100, birdY, 35, 30);
+        }
+
+        // Draw Pipes
+        g.setColor(new Color(153, 51, 255)); // Forest Green
+        for (Rectangle p : pipes) {
+            g.fillRect(p.x, p.y, p.width, p.height);
+            g.setColor(Color.BLACK);
+            g.drawRect(p.x, p.y, p.width, p.height); // Outline
+            g.setColor(new Color(34, 139, 255));
+        }
+
+        // UI
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 40));
+        if (gameOver) {
+            g.drawString("GAME OVER", width/2 - 120, height/2);
+            g.setFont(new Font("Arial", Font.PLAIN, 20));
+            g.drawString("Score: " + score, width/2 - 40, height/2 + 40);
+            g.drawString("Press Space to Restart", width/2 - 100, height/2 + 80);
+        } else {
+            g.drawString(String.valueOf(score), width/2 - 20, 50);
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (!gameOver) {
+            birdVelocity += gravity;
+            birdY += birdVelocity;
+
+            for (int i = 0; i < pipes.size(); i++) {
+                Rectangle p = pipes.get(i);
+                p.x -= 4; // Pipe speed
+
+                // Collision
+                if (p.intersects(new Rectangle(100, birdY, 35, 30)) || birdY > height || birdY < 0) {
+                    gameOver = true;
+                    timer.stop();
+                }
+
+                // Scoring: when the bird passes the right edge of a top pipe
+                if (p.y == 0 && p.x + p.width == 100) {
+                    score++;
+                }
+            }
+
+            // Remove off-screen pipes and add new ones
+            if (pipes.get(1).x + pipes.get(0).width < 0) {
+                pipes.remove(0); // Remove top
+                pipes.remove(0); // Remove bottom
+                addPipe(width);  // Add new set at the edge
+            }
+        }
+        repaint();
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+            if (gameOver) {
+                restartGame();
+            } else {
+                birdVelocity = -12;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        new SadFlappyBird();
+    }
+
+    public void keyReleased(KeyEvent e) {}
+    public void keyTyped(KeyEvent e) {}
+}
